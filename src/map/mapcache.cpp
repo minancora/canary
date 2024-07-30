@@ -40,7 +40,7 @@ void MapCache::flush() {
 	tiles.clear();
 }
 
-void MapCache::parseItemAttr(const std::shared_ptr<BasicItem> &BasicItem, std::shared_ptr<Item> item) {
+void MapCache::parseItemAttr(const std::shared_ptr<BasicItem> &BasicItem, const std::shared_ptr<Item> &item) {
 	if (BasicItem->charges > 0) {
 		item->setSubType(BasicItem->charges);
 	}
@@ -112,7 +112,7 @@ std::shared_ptr<Tile> MapCache::getOrCreateTileFromCache(const std::unique_ptr<F
 
 	const uint8_t z = floor->getZ();
 
-	auto map = static_cast<Map*>(this);
+	auto map = dynamic_cast<Map*>(this);
 
 	std::shared_ptr<Tile> tile = nullptr;
 	if (cachedTile->isHouse()) {
