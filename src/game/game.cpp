@@ -10175,7 +10175,7 @@ bool Game::removeFiendishMonster(uint32_t id, bool create /* = true*/) {
 void Game::updateForgeableMonsters() {
 	forgeableMonsters.clear();
 	for (const auto &[monsterId, monster] : monsters) {
-		auto monsterTile = monster->getTile();
+		const auto &monsterTile = monster->getTile();
 		if (!monsterTile) {
 			continue;
 		}
@@ -10185,7 +10185,7 @@ void Game::updateForgeableMonsters() {
 		}
 	}
 
-	for (const auto monsterId : getFiendishMonsters()) {
+	for (const auto &monsterId : getFiendishMonsters()) {
 		if (!getMonsterByID(monsterId)) {
 			removeFiendishMonster(monsterId);
 		}
