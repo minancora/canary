@@ -54,6 +54,7 @@
 #include "enums/account_errors.hpp"
 #include "enums/account_coins.hpp"
 #include "enums/player_blessings.hpp"
+#include "utils/counter_pointer.hpp"
 
 #include <appearances.pb.h>
 
@@ -532,6 +533,14 @@ void Game::start(ServiceManager* manager) {
 			marketItemsPriceIntervalMS, [this] { loadItemsPrice(); }, "Game::loadItemsPrice"
 		);
 	}
+
+	g_dispatcher().cycleEvent(
+		5000, [this] { teste(); }, "Calling GC"
+	);
+}
+
+void Game::teste() const {
+	g_beats().countAllReferencesAndClean();
 }
 
 GameState_t Game::getGameState() const {
@@ -866,7 +875,7 @@ void Game::internalGetPosition(const std::shared_ptr<Item> &item, Position &pos,
 
 	std::shared_ptr<Cylinder> topParent = item->getTopParent();
 	if (topParent) {
-		if (const auto player = std::dynamic_pointer_cast<Player>(topParent)) {
+		if (const auto &player = std::dynamic_pointer_cast<Player>(topParent)) {
 			pos.x = 0xFFFF;
 
 			std::shared_ptr<Container> container = std::dynamic_pointer_cast<Container>(item->getParent());
@@ -1215,7 +1224,7 @@ void Game::executeDeath(uint32_t creatureId) {
 
 void Game::playerTeleport(uint32_t playerId, const Position &newPosition) {
 	metrics::method_latency measure(__METHOD_NAME__);
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || !player->hasFlag(PlayerFlags_t::CanMapClickTeleport)) {
 		return;
 	}
@@ -1299,7 +1308,7 @@ FILELOADER_ERRORS Game::loadAppearanceProtobuf(const std::string &file) {
 
 void Game::playerMoveThing(uint32_t playerId, const Position &fromPos, uint16_t itemId, uint8_t fromStackPos, const Position &toPos, uint8_t count) {
 	metrics::method_latency measure(__METHOD_NAME__);
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -1363,7 +1372,7 @@ void Game::playerMoveThing(uint32_t playerId, const Position &fromPos, uint16_t 
 }
 
 void Game::playerMoveCreatureByID(uint32_t playerId, uint32_t movingCreatureId, const Position &movingCreatureOrigPos, const Position &toPos) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -1481,7 +1490,7 @@ ReturnValue Game::internalMoveCreature(const std::shared_ptr<Creature> &creature
 	creature->setLastPosition(creature->getPosition());
 	const Position &currentPos = creature->getPosition();
 	Position destPos = getNextPosition(direction, currentPos);
-	const auto player = creature->getPlayer();
+	const auto &player = creature->getPlayer();
 
 	bool diagonalMovement = (direction & DIRECTION_DIAGONAL_MASK) != 0;
 	if (player && !diagonalMovement) {
@@ -1588,7 +1597,7 @@ ReturnValue Game::internalMoveCreature(const std::shared_ptr<Creature> &creature
 }
 
 void Game::playerMoveItemByPlayerID(uint32_t playerId, const Position &fromPos, uint16_t itemId, uint8_t fromStackPos, const Position &toPos, uint8_t count) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -2361,7 +2370,7 @@ std::tuple<ReturnValue, uint32_t, uint32_t> Game::addItemBatch(const std::shared
 	}
 
 	metrics::method_latency measure(__METHOD_NAME__);
-	const auto player = toCylinder->getPlayer();
+	const auto &player = toCylinder->getPlayer();
 	bool dropping = false;
 	auto setupDestination = [&]() -> std::shared_ptr<Cylinder> {
 		if (autoContainerId == 0) {
@@ -2601,7 +2610,7 @@ bool Game::removeMoney(const std::shared_ptr<Cylinder> &cylinder, uint64_t money
 		}
 	}
 
-	const auto player = useBalance ? std::dynamic_pointer_cast<Player>(cylinder) : nullptr;
+	const auto &player = useBalance ? std::dynamic_pointer_cast<Player>(cylinder) : nullptr;
 	uint64_t balance = 0;
 	if (useBalance && player) {
 		balance = player->getBankBalance();
@@ -3306,7 +3315,7 @@ Slots_t getSlotType(const ItemType &it) {
 
 // Implementation of player invoked events
 void Game::playerEquipItem(uint32_t playerId, uint16_t itemId, bool hasTier /* = false*/, uint8_t tier /* = 0*/) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3382,7 +3391,7 @@ void Game::playerEquipItem(uint32_t playerId, uint16_t itemId, bool hasTier /* =
 }
 
 void Game::playerMove(uint32_t playerId, Direction direction) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3395,7 +3404,7 @@ void Game::playerMove(uint32_t playerId, Direction direction) {
 }
 
 void Game::forcePlayerMove(uint32_t playerId, Direction direction) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3422,7 +3431,7 @@ bool Game::playerBroadcastMessage(const std::shared_ptr<Player> &player, const s
 }
 
 void Game::playerCreatePrivateChannel(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || !player->isPremium()) {
 		return;
 	}
@@ -3436,7 +3445,7 @@ void Game::playerCreatePrivateChannel(uint32_t playerId) {
 }
 
 void Game::playerChannelInvite(uint32_t playerId, const std::string &name) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3459,7 +3468,7 @@ void Game::playerChannelInvite(uint32_t playerId, const std::string &name) {
 }
 
 void Game::playerChannelExclude(uint32_t playerId, const std::string &name) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3482,7 +3491,7 @@ void Game::playerChannelExclude(uint32_t playerId, const std::string &name) {
 }
 
 void Game::playerRequestChannels(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3491,7 +3500,7 @@ void Game::playerRequestChannels(uint32_t playerId) {
 }
 
 void Game::playerOpenChannel(uint32_t playerId, uint16_t channelId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3513,7 +3522,7 @@ void Game::playerOpenChannel(uint32_t playerId, uint16_t channelId) {
 }
 
 void Game::playerCloseChannel(uint32_t playerId, uint16_t channelId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3522,7 +3531,7 @@ void Game::playerCloseChannel(uint32_t playerId, uint16_t channelId) {
 }
 
 void Game::playerOpenPrivateChannel(uint32_t playerId, std::string &receiver) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3552,7 +3561,7 @@ void Game::playerCloseNpcChannel(uint32_t playerId) {
 }
 
 void Game::playerReceivePing(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3561,7 +3570,7 @@ void Game::playerReceivePing(uint32_t playerId) {
 }
 
 void Game::playerReceivePingBack(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3570,7 +3579,7 @@ void Game::playerReceivePingBack(uint32_t playerId) {
 }
 
 void Game::playerAutoWalk(uint32_t playerId, const std::vector<Direction> &listDir) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3581,7 +3590,7 @@ void Game::playerAutoWalk(uint32_t playerId, const std::vector<Direction> &listD
 }
 
 void Game::forcePlayerAutoWalk(uint32_t playerId, const std::vector<Direction> &listDir) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3598,7 +3607,7 @@ void Game::forcePlayerAutoWalk(uint32_t playerId, const std::vector<Direction> &
 }
 
 void Game::playerStopAutoWalk(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3608,7 +3617,7 @@ void Game::playerStopAutoWalk(uint32_t playerId) {
 
 void Game::playerUseItemEx(uint32_t playerId, const Position &fromPos, uint8_t fromStackPos, uint16_t fromItemId, const Position &toPos, uint8_t toStackPos, uint16_t toItemId) {
 	metrics::method_latency measure(__METHOD_NAME__);
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3746,7 +3755,7 @@ void Game::playerUseItemEx(uint32_t playerId, const Position &fromPos, uint8_t f
 
 void Game::playerUseItem(uint32_t playerId, const Position &pos, uint8_t stackPos, uint8_t index, uint16_t itemId) {
 	metrics::method_latency measure(__METHOD_NAME__);
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -3849,7 +3858,7 @@ void Game::playerUseItem(uint32_t playerId, const Position &pos, uint8_t stackPo
 
 void Game::playerUseWithCreature(uint32_t playerId, const Position &fromPos, uint8_t fromStackPos, uint32_t creatureId, uint16_t itemId) {
 	metrics::method_latency measure(__METHOD_NAME__);
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4003,7 +4012,7 @@ void Game::playerUseWithCreature(uint32_t playerId, const Position &fromPos, uin
 }
 
 void Game::playerCloseContainer(uint32_t playerId, uint8_t cid) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4013,7 +4022,7 @@ void Game::playerCloseContainer(uint32_t playerId, uint8_t cid) {
 }
 
 void Game::playerMoveUpContainer(uint32_t playerId, uint8_t cid) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4065,7 +4074,7 @@ void Game::playerMoveUpContainer(uint32_t playerId, uint8_t cid) {
 }
 
 void Game::playerUpdateContainer(uint32_t playerId, uint8_t cid) {
-	const auto player = getPlayerByGUID(playerId);
+	const auto &player = getPlayerByGUID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4134,7 +4143,7 @@ void Game::playerRotateItem(uint32_t playerId, const Position &pos, uint8_t stac
 }
 
 void Game::playerConfigureShowOffSocket(uint32_t playerId, const Position &pos, uint8_t stackPos, const uint16_t itemId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || pos.x == 0xFFFF) {
 		return;
 	}
@@ -4190,7 +4199,7 @@ void Game::playerConfigureShowOffSocket(uint32_t playerId, const Position &pos, 
 }
 
 void Game::playerSetShowOffSocket(uint32_t playerId, Outfit_t &outfit, const Position &pos, uint8_t stackPos, const uint16_t itemId, uint8_t podiumVisible, uint8_t direction) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || pos.x == 0xFFFF) {
 		return;
 	}
@@ -4320,7 +4329,7 @@ void Game::playerSetShowOffSocket(uint32_t playerId, Outfit_t &outfit, const Pos
 }
 
 void Game::playerWrapableItem(uint32_t playerId, const Position &pos, uint8_t stackPos, const uint16_t itemId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4469,7 +4478,7 @@ void Game::unwrapItem(const std::shared_ptr<Item> &item, uint16_t unWrapId, cons
 }
 
 void Game::playerWriteItem(uint32_t playerId, uint32_t windowTextId, const std::string &text) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4533,7 +4542,7 @@ void Game::playerWriteItem(uint32_t playerId, uint32_t windowTextId, const std::
 }
 
 void Game::playerBrowseField(uint32_t playerId, const Position &pos) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4593,7 +4602,7 @@ void Game::playerBrowseField(uint32_t playerId, const Position &pos) {
 }
 
 void Game::playerStowItem(uint32_t playerId, const Position &pos, uint16_t itemId, uint8_t stackpos, uint8_t count, bool allItems) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4634,7 +4643,7 @@ void Game::playerStowItem(uint32_t playerId, const Position &pos, uint16_t itemI
 }
 
 void Game::playerStashWithdraw(uint32_t playerId, uint16_t itemId, uint32_t count, uint8_t) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4709,7 +4718,7 @@ void Game::playerStashWithdraw(uint32_t playerId, uint16_t itemId, uint32_t coun
 }
 
 void Game::playerSeekInContainer(uint32_t playerId, uint8_t containerId, uint16_t index, uint8_t containerCategory) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4734,7 +4743,7 @@ void Game::playerSeekInContainer(uint32_t playerId, uint8_t containerId, uint16_
 }
 
 void Game::playerUpdateHouseWindow(uint32_t playerId, uint8_t listId, uint32_t windowTextId, const std::string &text) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4751,7 +4760,7 @@ void Game::playerUpdateHouseWindow(uint32_t playerId, uint8_t listId, uint32_t w
 }
 
 void Game::playerRequestTrade(uint32_t playerId, const Position &pos, uint8_t stackPos, uint32_t tradePlayerId, uint16_t itemId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -4925,7 +4934,7 @@ bool Game::internalStartTrade(const std::shared_ptr<Player> &player, const std::
 }
 
 void Game::playerAcceptTrade(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5058,7 +5067,7 @@ std::string Game::getTradeErrorDescription(ReturnValue ret, const std::shared_pt
 }
 
 void Game::playerLookInTrade(uint32_t playerId, bool lookAtCounterOffer, uint8_t index) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5117,7 +5126,7 @@ void Game::playerLookInTrade(uint32_t playerId, bool lookAtCounterOffer, uint8_t
 }
 
 void Game::playerCloseTrade(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5172,7 +5181,7 @@ void Game::playerBuyItem(uint32_t playerId, uint16_t itemId, uint8_t count, uint
 		return;
 	}
 
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5228,7 +5237,7 @@ void Game::playerSellItem(uint32_t playerId, uint16_t itemId, uint8_t count, uin
 		return;
 	}
 
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5258,7 +5267,7 @@ void Game::playerSellItem(uint32_t playerId, uint16_t itemId, uint8_t count, uin
 }
 
 void Game::playerCloseShop(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5267,7 +5276,7 @@ void Game::playerCloseShop(uint32_t playerId) {
 }
 
 void Game::playerLookInShop(uint32_t playerId, uint16_t itemId, uint8_t count) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5297,7 +5306,7 @@ void Game::playerLookInShop(uint32_t playerId, uint16_t itemId, uint8_t count) {
 }
 
 void Game::playerLookAt(uint32_t playerId, uint16_t itemId, const Position &pos, uint8_t stackPos) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5332,7 +5341,7 @@ void Game::playerLookAt(uint32_t playerId, uint16_t itemId, const Position &pos,
 }
 
 void Game::playerLookInBattleList(uint32_t playerId, uint32_t creatureId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5367,7 +5376,7 @@ void Game::playerLookInBattleList(uint32_t playerId, uint32_t creatureId) {
 }
 
 void Game::playerQuickLoot(uint32_t playerId, const Position &pos, uint16_t itemId, uint8_t stackPos, const std::shared_ptr<Item> &defaultItem, bool lootAllCorpses, bool autoLoot) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5557,7 +5566,7 @@ void Game::playerLootAllCorpses(const std::shared_ptr<Player> &player, const Pos
 }
 
 void Game::playerSetManagedContainer(uint32_t playerId, ObjectCategory_t category, const Position &pos, uint16_t itemId, uint8_t stackPos, bool isLootContainer) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || pos.x != 0xffff) {
 		return;
 	}
@@ -5602,7 +5611,7 @@ void Game::playerSetManagedContainer(uint32_t playerId, ObjectCategory_t categor
 }
 
 void Game::playerClearManagedContainer(uint32_t playerId, ObjectCategory_t category, bool isLootContainer) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5619,7 +5628,7 @@ void Game::playerClearManagedContainer(uint32_t playerId, ObjectCategory_t categ
 }
 
 void Game::playerOpenManagedContainer(uint32_t playerId, ObjectCategory_t category, bool isLootContainer) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5633,7 +5642,7 @@ void Game::playerOpenManagedContainer(uint32_t playerId, ObjectCategory_t catego
 }
 
 void Game::playerSetQuickLootFallback(uint32_t playerId, bool fallback) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5642,7 +5651,7 @@ void Game::playerSetQuickLootFallback(uint32_t playerId, bool fallback) {
 }
 
 void Game::playerQuickLootBlackWhitelist(uint32_t playerId, QuickLootFilter_t filter, const std::vector<uint16_t> &itemIds) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5655,7 +5664,7 @@ void Game::playerQuickLootBlackWhitelist(uint32_t playerId, QuickLootFilter_t fi
  * Depot search system
  ******************************************************************************/
 void Game::playerRequestDepotItems(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || !player->isDepotSearchAvailable()) {
 		return;
 	}
@@ -5670,7 +5679,7 @@ void Game::playerRequestDepotItems(uint32_t playerId) {
 }
 
 void Game::playerRequestCloseDepotSearch(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || !player->isDepotSearchOpen()) {
 		return;
 	}
@@ -5680,7 +5689,7 @@ void Game::playerRequestCloseDepotSearch(uint32_t playerId) {
 }
 
 void Game::playerRequestDepotSearchItem(uint32_t playerId, uint16_t itemId, uint8_t tier) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || !player->isDepotSearchOpen()) {
 		return;
 	}
@@ -5695,7 +5704,7 @@ void Game::playerRequestDepotSearchItem(uint32_t playerId, uint16_t itemId, uint
 }
 
 void Game::playerRequestDepotSearchRetrieve(uint32_t playerId, uint16_t itemId, uint8_t tier, uint8_t type) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || !player->isDepotSearchOpenOnItem(itemId)) {
 		return;
 	}
@@ -5710,7 +5719,7 @@ void Game::playerRequestDepotSearchRetrieve(uint32_t playerId, uint16_t itemId, 
 }
 
 void Game::playerRequestOpenContainerFromDepotSearch(uint32_t playerId, const Position &pos) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || !player->isDepotSearchOpen()) {
 		return;
 	}
@@ -5725,7 +5734,7 @@ void Game::playerRequestOpenContainerFromDepotSearch(uint32_t playerId, const Po
 }
 
 void Game::playerCancelAttackAndFollow(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5736,7 +5745,7 @@ void Game::playerCancelAttackAndFollow(uint32_t playerId) {
 }
 
 void Game::playerSetAttackedCreature(uint32_t playerId, uint32_t creatureId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5767,7 +5776,7 @@ void Game::playerSetAttackedCreature(uint32_t playerId, uint32_t creatureId) {
 }
 
 void Game::playerFollowCreature(uint32_t playerId, uint32_t creatureId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5778,7 +5787,7 @@ void Game::playerFollowCreature(uint32_t playerId, uint32_t creatureId) {
 }
 
 void Game::playerSetFightModes(uint32_t playerId, FightMode_t fightMode, bool chaseMode, bool secureMode) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5793,7 +5802,7 @@ void Game::playerRequestAddVip(uint32_t playerId, const std::string &name) {
 		return;
 	}
 
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5829,7 +5838,7 @@ void Game::playerRequestAddVip(uint32_t playerId, const std::string &name) {
 }
 
 void Game::playerRequestRemoveVip(uint32_t playerId, uint32_t guid) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5838,7 +5847,7 @@ void Game::playerRequestRemoveVip(uint32_t playerId, uint32_t guid) {
 }
 
 void Game::playerRequestEditVip(uint32_t playerId, uint32_t guid, const std::string &description, uint32_t icon, bool notify, std::vector<uint8_t> vipGroupsId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5847,7 +5856,7 @@ void Game::playerRequestEditVip(uint32_t playerId, uint32_t guid, const std::str
 }
 
 void Game::playerApplyImbuement(uint32_t playerId, uint16_t imbuementid, uint8_t slot, bool protectionCharm) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5876,7 +5885,7 @@ void Game::playerApplyImbuement(uint32_t playerId, uint16_t imbuementid, uint8_t
 }
 
 void Game::playerClearImbuement(uint32_t playerid, uint8_t slot) {
-	const auto player = getPlayerByID(playerid);
+	const auto &player = getPlayerByID(playerid);
 	if (!player) {
 		return;
 	}
@@ -5894,7 +5903,7 @@ void Game::playerClearImbuement(uint32_t playerid, uint8_t slot) {
 }
 
 void Game::playerCloseImbuementWindow(uint32_t playerid) {
-	const auto player = getPlayerByID(playerid);
+	const auto &player = getPlayerByID(playerid);
 	if (!player) {
 		return;
 	}
@@ -5903,7 +5912,7 @@ void Game::playerCloseImbuementWindow(uint32_t playerid) {
 }
 
 void Game::playerTurn(uint32_t playerId, Direction dir) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5925,7 +5934,7 @@ void Game::playerRequestOutfit(uint32_t playerId) {
 		return;
 	}
 
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5934,7 +5943,7 @@ void Game::playerRequestOutfit(uint32_t playerId) {
 }
 
 void Game::playerToggleMount(uint32_t playerId, bool mount) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -5947,7 +5956,7 @@ void Game::playerChangeOutfit(uint32_t playerId, Outfit_t outfit, uint8_t isMoun
 		return;
 	}
 
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -6014,7 +6023,7 @@ void Game::playerChangeOutfit(uint32_t playerId, Outfit_t outfit, uint8_t isMoun
 }
 
 void Game::playerShowQuestLog(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -6024,7 +6033,7 @@ void Game::playerShowQuestLog(uint32_t playerId) {
 }
 
 void Game::playerShowQuestLine(uint32_t playerId, uint16_t questId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -6034,7 +6043,7 @@ void Game::playerShowQuestLine(uint32_t playerId, uint16_t questId) {
 }
 
 void Game::playerSay(uint32_t playerId, uint16_t channelId, SpeakClasses type, const std::string &receiver, const std::string &text) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8152,7 +8161,7 @@ void Game::playerInviteToParty(uint32_t playerId, uint32_t invitedId) {
 		return;
 	}
 
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8191,7 +8200,7 @@ void Game::updatePlayerHelpers(const std::shared_ptr<Player> &player) {
 }
 
 void Game::playerJoinParty(uint32_t playerId, uint32_t leaderId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8215,7 +8224,7 @@ void Game::playerJoinParty(uint32_t playerId, uint32_t leaderId) {
 }
 
 void Game::playerRevokePartyInvitation(uint32_t playerId, uint32_t invitedId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8234,7 +8243,7 @@ void Game::playerRevokePartyInvitation(uint32_t playerId, uint32_t invitedId) {
 }
 
 void Game::playerPassPartyLeadership(uint32_t playerId, uint32_t newLeaderId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8253,7 +8262,7 @@ void Game::playerPassPartyLeadership(uint32_t playerId, uint32_t newLeaderId) {
 }
 
 void Game::playerLeaveParty(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8268,7 +8277,7 @@ void Game::playerLeaveParty(uint32_t playerId) {
 }
 
 void Game::playerEnableSharedPartyExperience(uint32_t playerId, bool sharedExpActive) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8283,7 +8292,7 @@ void Game::playerEnableSharedPartyExperience(uint32_t playerId, bool sharedExpAc
 }
 
 void Game::sendGuildMotd(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8295,7 +8304,7 @@ void Game::sendGuildMotd(uint32_t playerId) {
 }
 
 void Game::kickPlayer(uint32_t playerId, bool displayEffect) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8426,7 +8435,7 @@ std::string Game::generateVocationConditionHighscore(uint32_t vocation) {
 }
 
 void Game::processHighscoreResults(const DBResult_ptr &result, uint32_t playerID, uint8_t category, uint32_t vocation, uint8_t entriesPerPage) {
-	const auto player = g_game().getPlayerByID(playerID);
+	const auto &player = g_game().getPlayerByID(playerID);
 	if (!player) {
 		return;
 	}
@@ -8564,7 +8573,7 @@ std::string Game::getSkillNameById(uint8_t &skill) {
 }
 
 void Game::playerReportRuleViolationReport(uint32_t playerId, const std::string &targetName, uint8_t reportType, uint8_t reportReason, const std::string &comment, const std::string &translation) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8574,7 +8583,7 @@ void Game::playerReportRuleViolationReport(uint32_t playerId, const std::string 
 }
 
 void Game::playerReportBug(uint32_t playerId, const std::string &message, const Position &position, uint8_t category) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8584,7 +8593,7 @@ void Game::playerReportBug(uint32_t playerId, const std::string &message, const 
 }
 
 void Game::playerDebugAssert(uint32_t playerId, const std::string &assertLine, const std::string &date, const std::string &description, const std::string &comment) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8599,7 +8608,7 @@ void Game::playerDebugAssert(uint32_t playerId, const std::string &assertLine, c
 }
 
 void Game::playerPreyAction(uint32_t playerId, uint8_t slot, uint8_t action, uint8_t option, int8_t index, uint16_t raceId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8608,7 +8617,7 @@ void Game::playerPreyAction(uint32_t playerId, uint8_t slot, uint8_t action, uin
 }
 
 void Game::playerTaskHuntingAction(uint32_t playerId, uint8_t slot, uint8_t action, bool upgrade, uint16_t raceId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8653,7 +8662,7 @@ void Game::playerNpcGreet(uint32_t playerId, uint32_t npcId) {
 }
 
 void Game::playerLeaveMarket(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8662,7 +8671,7 @@ void Game::playerLeaveMarket(uint32_t playerId) {
 }
 
 void Game::playerBrowseMarket(uint32_t playerId, uint16_t itemId, uint8_t tier) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8687,7 +8696,7 @@ void Game::playerBrowseMarket(uint32_t playerId, uint16_t itemId, uint8_t tier) 
 }
 
 void Game::playerBrowseMarketOwnOffers(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8702,7 +8711,7 @@ void Game::playerBrowseMarketOwnOffers(uint32_t playerId) {
 }
 
 void Game::playerBrowseMarketOwnHistory(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -8854,7 +8863,7 @@ void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t ite
 	// Initialize variables
 	// Before creating the offer we will compare it with the RETURN VALUE ERROR
 	std::ostringstream offerStatus;
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	const ItemType &it = Item::items[itemId];
 
 	// Make sure everything is ok before the create market offer starts
@@ -8937,7 +8946,7 @@ void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t ite
 }
 
 void Game::playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16_t counter) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || !player->getAccount()) {
 		return;
 	}
@@ -9020,7 +9029,7 @@ void Game::playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 
 void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16_t counter, uint16_t amount) {
 	std::ostringstream offerStatus;
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || !player->getAccount()) {
 		offerStatus << "Failed to load player";
 		return;
@@ -9292,7 +9301,7 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 }
 
 void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const std::string &buffer) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -9322,7 +9331,7 @@ void Game::sendOfflineTrainingDialog(const std::shared_ptr<Player> &player) {
 }
 
 void Game::playerAnswerModalWindow(uint32_t playerId, uint32_t modalWindowId, uint8_t button, uint8_t choice) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -9357,7 +9366,7 @@ void Game::playerAnswerModalWindow(uint32_t playerId, uint32_t modalWindowId, ui
 
 void Game::playerForgeFuseItems(uint32_t playerId, ForgeAction_t actionType, uint16_t firstItemId, uint8_t tier, uint16_t secondItemId, bool usedCore, bool reduceTierLoss, bool convergence) {
 	metrics::method_latency measure(__METHOD_NAME__);
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -9384,7 +9393,7 @@ void Game::playerForgeFuseItems(uint32_t playerId, ForgeAction_t actionType, uin
 }
 
 void Game::playerForgeTransferItemTier(uint32_t playerId, ForgeAction_t actionType, uint16_t donorItemId, uint8_t tier, uint16_t receiveItemId, bool convergence) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -9399,7 +9408,7 @@ void Game::playerForgeTransferItemTier(uint32_t playerId, ForgeAction_t actionTy
 }
 
 void Game::playerForgeResourceConversion(uint32_t playerId, ForgeAction_t actionType) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -9414,7 +9423,7 @@ void Game::playerForgeResourceConversion(uint32_t playerId, ForgeAction_t action
 }
 
 void Game::playerBrowseForgeHistory(uint32_t playerId, uint8_t page) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -9429,7 +9438,7 @@ void Game::playerBrowseForgeHistory(uint32_t playerId, uint8_t page) {
 }
 
 void Game::playerBosstiarySlot(uint32_t playerId, uint8_t slotId, uint32_t selectedBossId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -9456,7 +9465,7 @@ void Game::playerBosstiarySlot(uint32_t playerId, uint8_t slotId, uint32_t selec
 }
 
 void Game::playerSetMonsterPodium(uint32_t playerId, uint32_t monsterRaceId, const Position &pos, uint8_t stackPos, const uint16_t itemId, uint8_t direction, const std::pair<uint8_t, uint8_t> &podiumAndMonsterVisible) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || pos.x == 0xFFFF) {
 		return;
 	}
@@ -9562,7 +9571,7 @@ void Game::playerSetMonsterPodium(uint32_t playerId, uint32_t monsterRaceId, con
 }
 
 void Game::playerRotatePodium(uint32_t playerId, const Position &pos, uint8_t stackPos, const uint16_t itemId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -9651,7 +9660,7 @@ void Game::playerRotatePodium(uint32_t playerId, const Position &pos, uint8_t st
 }
 
 void Game::playerRequestInventoryImbuements(uint32_t playerId, bool isTrackerOpen) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player || player->isRemoved()) {
 		return;
 	}
@@ -9683,7 +9692,7 @@ void Game::playerRequestInventoryImbuements(uint32_t playerId, bool isTrackerOpe
 }
 
 void Game::playerOpenWheel(uint32_t playerId, uint32_t ownerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -9703,7 +9712,7 @@ void Game::playerOpenWheel(uint32_t playerId, uint32_t ownerId) {
 }
 
 void Game::playerSaveWheel(uint32_t playerId, NetworkMessage &msg) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -9718,7 +9727,7 @@ void Game::playerSaveWheel(uint32_t playerId, NetworkMessage &msg) {
 }
 
 void Game::playerWheelGemAction(uint32_t playerId, NetworkMessage &msg) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -9755,7 +9764,7 @@ void Game::playerWheelGemAction(uint32_t playerId, NetworkMessage &msg) {
 ********************/
 
 void Game::updatePlayerSaleItems(uint32_t playerId) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
@@ -10332,7 +10341,7 @@ void Game::removePlayerUniqueLogin(const std::shared_ptr<Player> &player) {
 }
 
 void Game::playerCheckActivity(const std::string &playerName, int interval) {
-	const auto player = getPlayerUniqueLogin(playerName);
+	const auto &player = getPlayerUniqueLogin(playerName);
 	if (!player) {
 		return;
 	}
@@ -10367,7 +10376,7 @@ void Game::playerCheckActivity(const std::string &playerName, int interval) {
 }
 
 void Game::playerRewardChestCollect(uint32_t playerId, const Position &pos, uint16_t itemId, uint8_t stackPos, uint32_t maxMoveItems /* = 0*/) {
-	const auto player = getPlayerByID(playerId);
+	const auto &player = getPlayerByID(playerId);
 	if (!player) {
 		return;
 	}
