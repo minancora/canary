@@ -36,12 +36,12 @@ int32_t Combat::getLevelFormula(const std::shared_ptr<Player> &player, const std
 	if (player->wheel()->getInstant("Runic Mastery") && wheelSpell && damage.instantSpellName.empty() && normal_random(0, 100) <= 25) {
 		const auto conjuringSpell = g_spells().getInstantSpellByName(damage.runeSpellName);
 		if (conjuringSpell && conjuringSpell != wheelSpell) {
-			uint32_t castResult = conjuringSpell->canCast(player) ? 20 : 10;
+			const uint32_t castResult = conjuringSpell->canCast(player) ? 20 : 10;
 			magicLevelSkill += magicLevelSkill * castResult / 100;
 		}
 	}
 
-	int32_t levelFormula = player->getLevel() * 2 + (player->getMagicLevel() + player->getSpecializedMagicLevel(damage.primary.type, true)) * 3;
+	const int32_t levelFormula = player->getLevel() * 2 + (player->getMagicLevel() + player->getSpecializedMagicLevel(damage.primary.type, true)) * 3;
 	return levelFormula;
 }
 
@@ -72,14 +72,14 @@ CombatDamage Combat::getCombatDamage(const std::shared_ptr<Creature> &creature, 
 			if (params.valueCallback) {
 				params.valueCallback->getMinMaxValues(player, damage, params.useCharges);
 			} else if (formulaType == COMBAT_FORMULA_LEVELMAGIC) {
-				int32_t levelFormula = getLevelFormula(player, wheelSpell, damage);
+				const int32_t levelFormula = getLevelFormula(player, wheelSpell, damage);
 				damage.primary.value = normal_random(
 					static_cast<int32_t>(levelFormula * mina + minb),
 					static_cast<int32_t>(levelFormula * maxa + maxb)
 				);
 			} else if (formulaType == COMBAT_FORMULA_SKILL) {
-				std::shared_ptr<Item> tool = player->getWeapon();
-				const WeaponShared_ptr weapon = g_weapons().getWeapon(tool);
+				const auto &tool = player->getWeapon();
+				const WeaponShared_ptr &weapon = g_weapons().getWeapon(tool);
 				if (weapon) {
 					damage.primary.value = normal_random(
 						static_cast<int32_t>(minb),
@@ -89,7 +89,7 @@ CombatDamage Combat::getCombatDamage(const std::shared_ptr<Creature> &creature, 
 					damage.secondary.type = weapon->getElementType();
 					damage.secondary.value = weapon->getElementDamage(player, target, tool);
 					if (params.useCharges) {
-						auto charges = tool->getAttribute<uint16_t>(ItemAttribute_t::CHARGES);
+						const auto charges = tool->getAttribute<uint16_t>(ItemAttribute_t::CHARGES);
 						if (charges != 0) {
 							g_game().transformItem(tool, tool->getID(), charges - 1);
 						}
@@ -243,7 +243,7 @@ ReturnValue Combat::canTargetCreature(const std::shared_ptr<Player> &player, con
 		}
 	}
 
-	return Combat::canDoCombat(player, target, true);
+	return canDoCombat(player, target, true);
 }
 
 ReturnValue Combat::canDoCombat(const std::shared_ptr<Creature> &caster, const std::shared_ptr<Tile> &tile, bool aggressive) {
@@ -267,7 +267,8 @@ ReturnValue Combat::canDoCombat(const std::shared_ptr<Creature> &caster, const s
 		const Position &tilePosition = tile->getPosition();
 		if (casterPosition.z < tilePosition.z) {
 			return RETURNVALUE_FIRSTGODOWNSTAIRS;
-		} else if (casterPosition.z > tilePosition.z) {
+		}
+		if (casterPosition.z > tilePosition.z) {
 			return RETURNVALUE_FIRSTGOUPSTAIRS;
 		}
 
@@ -310,14 +311,14 @@ ReturnValue Combat::canDoCombat(const std::shared_ptr<Creature> &attacker, const
 		return RETURNVALUE_NOERROR;
 	}
 
-	auto targetPlayer = target ? target->getPlayer() : nullptr;
+	const auto targetPlayer = target ? target->getPlayer() : nullptr;
 	if (target) {
-		std::shared_ptr<Tile> tile = target->getTile();
+		const std::shared_ptr<Tile> &tile = target->getTile();
 		if (tile->hasProperty(CONST_PROP_BLOCKPROJECTILE)) {
 			return RETURNVALUE_NOTENOUGHROOM;
 		}
 		if (tile->hasFlag(TILESTATE_PROTECTIONZONE)) {
-			auto permittedOnPz = targetPlayer ? targetPlayer->hasPermittedConditionInPZ() : false;
+			const auto permittedOnPz = targetPlayer ? targetPlayer->hasPermittedConditionInPZ() : false;
 			return permittedOnPz ? RETURNVALUE_NOERROR : RETURNVALUE_ACTIONNOTPERMITTEDINPROTECTIONZONE;
 		}
 	}
@@ -341,10 +342,11 @@ ReturnValue Combat::canDoCombat(const std::shared_ptr<Creature> &attacker, const
 				}
 
 				// nopvp-zone
-				auto attackerTile = attackerPlayer->getTile();
+				const auto attackerTile = attackerPlayer->getTile();
 				if (targetPlayerTile && targetPlayerTile->hasFlag(TILESTATE_NOPVPZONE)) {
 					return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
-				} else if (attackerTile && attackerTile->hasFlag(TILESTATE_NOPVPZONE) && targetPlayerTile && !targetPlayerTile->hasFlag(TILESTATE_NOPVPZONE | TILESTATE_PROTECTIONZONE)) {
+				}
+				if (attackerTile && attackerTile->hasFlag(TILESTATE_NOPVPZONE) && targetPlayerTile && !targetPlayerTile->hasFlag(TILESTATE_NOPVPZONE | TILESTATE_PROTECTIONZONE)) {
 					return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
 				}
 
@@ -501,7 +503,7 @@ bool Combat::setParam(CombatParam_t param, uint32_t value) {
 	return false;
 }
 
-bool Combat::setCallback(CallBackParam_t key) {
+bool Combat::setCallback(const CallBackParam_t &key) {
 	switch (key) {
 		case CALLBACK_PARAM_LEVELMAGICVALUE: {
 			params.valueCallback = std::make_unique<ValueCallback>(COMBAT_FORMULA_LEVELMAGIC);
@@ -668,7 +670,7 @@ CombatDamage Combat::applyImbuementElementalDamage(const std::shared_ptr<Player>
 			break;
 		}
 
-		float damagePercent = imbuementInfo.imbuement->elementDamage / 100.0;
+		const float damagePercent = imbuementInfo.imbuement->elementDamage / 100.0;
 
 		damage.secondary.type = imbuementInfo.imbuement->combatType;
 		damage.secondary.value = damage.primary.value * (damagePercent);
@@ -748,7 +750,7 @@ void Combat::CombatConditionFunc(const std::shared_ptr<Creature> &caster, const 
 				player->sendCancelMessage("You are still immune against this spell.");
 				return;
 			} else if (caster && caster->getMonster()) {
-				uint16_t playerCharmRaceid = player->parseRacebyCharm(CHARM_CLEANSE, false, 0);
+				const uint16_t playerCharmRaceid = player->parseRacebyCharm(CHARM_CLEANSE, false, 0);
 				if (playerCharmRaceid != 0) {
 					const auto &mType = g_monsters().getMonsterType(caster->getName());
 					if (mType && playerCharmRaceid == mType->info.raceid) {
@@ -864,7 +866,7 @@ void Combat::combatTileEffects(const CreatureVector &spectators, const std::shar
 			item->setOwner(caster);
 		}
 
-		ReturnValue ret = g_game().internalAddItem(tile, item);
+		const ReturnValue ret = g_game().internalAddItem(tile, item);
 		if (ret == RETURNVALUE_NOERROR) {
 			item->startDecaying();
 		}
@@ -947,7 +949,7 @@ void Combat::doChainEffect(const Position &origin, const Position &dest, uint8_t
 		fpp.maxSearchDist = 9;
 		Position pos = origin;
 		if (g_game().map.getPathMatching(origin, dirList, FrozenPathingConditionCall(dest), fpp)) {
-			for (auto dir : dirList) {
+			for (const auto &dir : dirList) {
 				pos = getNextPosition(dir, pos);
 				g_game().addMagicEffect(pos, effect);
 			}
@@ -993,7 +995,7 @@ void Combat::setupChain(const std::shared_ptr<Weapon> &weapon) {
 	weapon->params.chainCallback = std::make_unique<ChainCallback>();
 
 	auto setCommonValues = [this, weapon](double formula, SoundEffect_t impactSound, uint32_t effect) {
-		double weaponSkillFormula = weapon->getChainSkillValue();
+		const double weaponSkillFormula = weapon->getChainSkillValue();
 		setPlayerCombatValues(COMBAT_FORMULA_SKILL, 0, 0, weaponSkillFormula ? weaponSkillFormula : formula, 0);
 		setParam(COMBAT_PARAM_IMPACTSOUND, impactSound);
 		setParam(COMBAT_PARAM_EFFECT, effect);
@@ -1053,9 +1055,9 @@ bool Combat::doCombatChain(const std::shared_ptr<Creature> &caster, const std::s
 	int i = 0;
 	auto combat = this;
 	for (const auto &[from, toVector] : targets) {
-		auto delay = i * std::max<int32_t>(50, g_configManager().getNumber(COMBAT_CHAIN_DELAY, __FUNCTION__));
+		const auto delay = i * std::max<int32_t>(50, g_configManager().getNumber(COMBAT_CHAIN_DELAY, __FUNCTION__));
 		++i;
-		for (auto to : toVector) {
+		for (const auto &to : toVector) {
 			auto nextTarget = g_game().getCreatureByID(to);
 			if (!nextTarget) {
 				continue;
@@ -1114,7 +1116,7 @@ bool Combat::doCombat(const std::shared_ptr<Creature> &caster, const Position &p
 			doCombatMana(caster, position, area, damage, params);
 		}
 	} else {
-		auto origin = caster != nullptr ? caster->getPosition() : Position();
+		const auto origin = caster != nullptr ? caster->getPosition() : Position();
 		CombatFunc(caster, origin, position, area, params, CombatNullFunc, nullptr);
 	}
 
@@ -1257,7 +1259,7 @@ void Combat::doCombatHealth(const std::shared_ptr<Creature> &caster, const std::
 }
 
 void Combat::doCombatHealth(const std::shared_ptr<Creature> &caster, const std::shared_ptr<Creature> &target, const Position &origin, CombatDamage &damage, const CombatParams &params) {
-	bool canCombat = !params.aggressive || (caster != target && Combat::canDoCombat(caster, target, params.aggressive) == RETURNVALUE_NOERROR);
+	const bool canCombat = !params.aggressive || (caster != target && Combat::canDoCombat(caster, target, params.aggressive) == RETURNVALUE_NOERROR);
 	if ((caster && target)
 	    && (caster == target || canCombat)
 	    && (params.impactEffect != CONST_ME_NONE)) {
@@ -1340,7 +1342,7 @@ void Combat::doCombatCondition(const std::shared_ptr<Creature> &caster, const Po
 }
 
 void Combat::doCombatCondition(const std::shared_ptr<Creature> &caster, const std::shared_ptr<Creature> &target, const CombatParams &params) {
-	bool canCombat = !params.aggressive || (caster != target && Combat::canDoCombat(caster, target, params.aggressive) == RETURNVALUE_NOERROR);
+	const bool canCombat = !params.aggressive || (caster != target && Combat::canDoCombat(caster, target, params.aggressive) == RETURNVALUE_NOERROR);
 	if ((caster == target || canCombat) && params.impactEffect != CONST_ME_NONE) {
 		g_game().addMagicEffect(target->getPosition(), params.impactEffect);
 	}
@@ -1369,7 +1371,7 @@ void Combat::doCombatDispel(const std::shared_ptr<Creature> &caster, const Posit
 }
 
 void Combat::doCombatDispel(const std::shared_ptr<Creature> &caster, const std::shared_ptr<Creature> &target, const CombatParams &params) {
-	bool canCombat = !params.aggressive || (caster != target && Combat::canDoCombat(caster, target, params.aggressive) == RETURNVALUE_NOERROR);
+	const bool canCombat = !params.aggressive || (caster != target && Combat::canDoCombat(caster, target, params.aggressive) == RETURNVALUE_NOERROR);
 	if ((caster && target)
 	    && (caster == target || canCombat)
 	    && (params.impactEffect != CONST_ME_NONE)) {
@@ -1400,7 +1402,7 @@ void Combat::doCombatDispel(const std::shared_ptr<Creature> &caster, const std::
 
 void Combat::doCombatDefault(const std::shared_ptr<Creature> &caster, const std::shared_ptr<Creature> &target, const Position &origin, const CombatParams &params) {
 	if (!params.aggressive || (caster != target && Combat::canDoCombat(caster, target, params.aggressive) == RETURNVALUE_NOERROR)) {
-		auto spectators = Spectators().find<Player>(target->getPosition(), true);
+		const auto spectators = Spectators().find<Player>(target->getPosition(), true);
 
 		CombatNullFunc(caster, target, params, nullptr);
 		combatTileEffects(spectators.data(), caster, target->getTile(), params);
@@ -1472,7 +1474,7 @@ std::vector<std::pair<Position, std::vector<uint32_t>>> Combat::pickChainTargets
 				continue;
 			}
 
-			double distance = Position::getEuclideanDistance(currentTarget->getPosition(), spectator->getPosition());
+			const double distance = Position::getEuclideanDistance(currentTarget->getPosition(), spectator->getPosition());
 			if (distance < closestDistance) {
 				closestDistance = distance;
 				closestSpectator = spectator;
@@ -1485,7 +1487,7 @@ std::vector<std::pair<Position, std::vector<uint32_t>>> Combat::pickChainTargets
 			bool found = false;
 			for (auto &[pos, vec] : resultMap) {
 				if (pos == currentTarget->getPosition()) {
-					vec.push_back(closestSpectator->getID());
+					vec.emplace_back(closestSpectator->getID());
 					found = true;
 					break;
 				}
@@ -1497,7 +1499,8 @@ std::vector<std::pair<Position, std::vector<uint32_t>>> Combat::pickChainTargets
 			targets.push_back(closestSpectator);
 			visited.insert(closestSpectator->getID());
 			continue;
-		} else if (backtracking) {
+		}
+		if (backtracking) {
 			g_logger().debug("[{}] backtracking", __METHOD_NAME__);
 			targets.pop_back();
 			backtrackingAttempts--;
@@ -1511,9 +1514,9 @@ std::vector<std::pair<Position, std::vector<uint32_t>>> Combat::pickChainTargets
 }
 
 bool Combat::isValidChainTarget(const std::shared_ptr<Creature> &caster, const std::shared_ptr<Creature> &currentTarget, const std::shared_ptr<Creature> &potentialTarget, const CombatParams &params, bool aggressive) {
-	bool canCombat = canDoCombat(caster, potentialTarget, aggressive) == RETURNVALUE_NOERROR;
-	bool pick = params.chainPickerCallback ? params.chainPickerCallback->onChainCombat(caster, potentialTarget) : true;
-	bool hasSight = g_game().isSightClear(currentTarget->getPosition(), potentialTarget->getPosition(), true);
+	const bool canCombat = canDoCombat(caster, potentialTarget, aggressive) == RETURNVALUE_NOERROR;
+	const bool pick = params.chainPickerCallback ? params.chainPickerCallback->onChainCombat(caster, potentialTarget) : true;
+	const bool hasSight = g_game().isSightClear(currentTarget->getPosition(), potentialTarget->getPosition(), true);
 	return canCombat && pick && hasSight;
 }
 
@@ -1531,7 +1534,7 @@ uint32_t ValueCallback::getMagicLevelSkill(const std::shared_ptr<Player> &player
 		// Rune conjuring spell have the same name as the rune item spell.
 		const std::shared_ptr<InstantSpell> &conjuringSpell = g_spells().getInstantSpellByName(damage.runeSpellName);
 		if (spell && conjuringSpell && conjuringSpell != spell && normal_random(0, 100) <= 25) {
-			uint32_t castResult = conjuringSpell->canCast(player) ? 20 : 10;
+			const uint32_t castResult = conjuringSpell->canCast(player) ? 20 : 10;
 			magicLevelSkill += magicLevelSkill * castResult / 100;
 		}
 	}
@@ -1603,15 +1606,15 @@ void ValueCallback::getMinMaxValues(const std::shared_ptr<Player> &player, Comba
 	if (lua_pcall(L, parameters, 2, 0) != 0) {
 		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
 	} else {
-		int32_t defaultDmg = normal_random(
+		const int32_t defaultDmg = normal_random(
 			LuaScriptInterface::getNumber<int32_t>(L, -2),
 			LuaScriptInterface::getNumber<int32_t>(L, -1)
 		);
 
 		if (shouldCalculateSecondaryDamage) {
-			double factor = (double)elementAttack / (double)attackValue; // attack value here is phys dmg + element dmg
-			int32_t elementDamage = std::round(defaultDmg * factor);
-			int32_t physDmg = std::round(defaultDmg * (1.0 - factor));
+			const double factor = static_cast<double>(elementAttack) / static_cast<double>(attackValue); // attack value here is phys dmg + element dmg
+			const int32_t elementDamage = std::round(defaultDmg * factor);
+			const int32_t physDmg = std::round(defaultDmg * (1.0 - factor));
 			damage.primary.value = physDmg;
 			damage.secondary.value = elementDamage;
 		} else {
@@ -1723,7 +1726,7 @@ void ChainCallback::getChainValues(const std::shared_ptr<Creature> &creature, ui
 		backtracking = m_backtracking;
 	}
 }
-void ChainCallback::onChainCombat(const std::shared_ptr<Creature> &creature, uint8_t &maxTargets, uint8_t &chainDistance, bool &backtracking) {
+void ChainCallback::onChainCombat(const std::shared_ptr<Creature> &creature, uint8_t &maxTargets, uint8_t &chainDistance, bool &backtracking) const {
 	// onChainCombat(creature)
 	if (!LuaScriptInterface::reserveScriptEnv()) {
 		g_logger().error("[ChainCallback::onTargetCombat - Creature {}] "
@@ -1798,7 +1801,7 @@ bool ChainPickerCallback::onChainCombat(const std::shared_ptr<Creature> &creatur
 		lua_pushnil(L);
 	}
 
-	int size0 = lua_gettop(L);
+	const int size0 = lua_gettop(L);
 	bool result = true;
 
 	if (lua_pcall(L, 2, 1 /*nReturnValues*/, 0) != 0) {
@@ -1856,7 +1859,7 @@ void AreaCombat::getList(const Position &centerPos, const Position &targetPos, s
 	}
 }
 
-void AreaCombat::copyArea(const std::unique_ptr<MatrixArea> &input, const std::unique_ptr<MatrixArea> &output, MatrixOperation_t op) {
+void AreaCombat::copyArea(const std::unique_ptr<MatrixArea> &input, const std::unique_ptr<MatrixArea> &output, const MatrixOperation_t &op) const {
 	uint32_t centerY, centerX;
 	input->getCenter(centerY, centerX);
 
@@ -1888,8 +1891,8 @@ void AreaCombat::copyArea(const std::unique_ptr<MatrixArea> &input, const std::u
 		output->setCenter((input->getCols() - 1) - centerY, centerX);
 	} else {
 		// rotation
-		int32_t rotateCenterX = (output->getCols() / 2) - 1;
-		int32_t rotateCenterY = (output->getRows() / 2) - 1;
+		const int32_t rotateCenterX = (output->getCols() / 2) - 1;
+		const int32_t rotateCenterY = (output->getRows() / 2) - 1;
 		int32_t angle;
 
 		switch (op) {
@@ -1910,23 +1913,23 @@ void AreaCombat::copyArea(const std::unique_ptr<MatrixArea> &input, const std::u
 				break;
 		}
 
-		double angleRad = M_PI * angle / 180.0;
+		const double angleRad = M_PI * angle / 180.0;
 
-		double a = std::cos(angleRad);
-		double b = -std::sin(angleRad);
-		double c = std::sin(angleRad);
-		double d = std::cos(angleRad);
+		const double a = std::cos(angleRad);
+		const double b = -std::sin(angleRad);
+		const double c = std::sin(angleRad);
+		const double d = std::cos(angleRad);
 
 		const uint32_t rows = input->getRows();
 		for (uint32_t x = 0, cols = input->getCols(); x < cols; ++x) {
 			for (uint32_t y = 0; y < rows; ++y) {
 				// calculate new coordinates using rotation center
-				int32_t newX = x - centerX;
-				int32_t newY = y - centerY;
+				const int32_t newX = x - centerX;
+				const int32_t newY = y - centerY;
 
 				// perform rotation
-				auto rotatedX = static_cast<int32_t>(round(newX * a + newY * b));
-				auto rotatedY = static_cast<int32_t>(round(newX * c + newY * d));
+				const auto rotatedX = static_cast<int32_t>(round(newX * a + newY * b));
+				const auto rotatedY = static_cast<int32_t>(round(newX * c + newY * d));
 
 				// write in the output matrix using rotated coordinates
 				(*output)[rotatedY + rotateCenterY][rotatedX + rotateCenterX] = (*input)[y][x];
@@ -1969,7 +1972,7 @@ std::unique_ptr<MatrixArea> AreaCombat::createArea(const std::list<uint32_t> &li
 	return area;
 }
 
-void AreaCombat::setupArea(const std::list<uint32_t> &list, uint32_t rows) {
+void AreaCombat::setupArea(const std::list<uint32_t> &list, const uint32_t rows) {
 	auto northArea = createArea(list, rows);
 
 	const uint32_t maxOutput = std::max<uint32_t>(northArea->getCols(), northArea->getRows()) * 2;
@@ -1992,7 +1995,7 @@ void AreaCombat::setupArea(const std::list<uint32_t> &list, uint32_t rows) {
 void AreaCombat::setupArea(int32_t length, int32_t spread) {
 	std::list<uint32_t> list;
 
-	uint32_t rows = length;
+	const uint32_t rows = length;
 	int32_t cols = 1;
 
 	if (spread != 0) {
@@ -2002,8 +2005,8 @@ void AreaCombat::setupArea(int32_t length, int32_t spread) {
 	int32_t colSpread = cols;
 
 	for (uint32_t y = 1; y <= rows; ++y) {
-		int32_t mincol = cols - colSpread + 1;
-		int32_t maxcol = cols - (cols - colSpread);
+		const int32_t mincol = cols - colSpread + 1;
+		const int32_t maxcol = cols - (cols - colSpread);
 
 		for (int32_t x = 1; x <= cols; ++x) {
 			if (y == rows && x == ((cols - (cols % 2)) / 2) + 1) {
@@ -2043,7 +2046,7 @@ void AreaCombat::setupArea(int32_t radius) {
 	std::list<uint32_t> list;
 
 	for (auto &row : area) {
-		for (int cell : row) {
+		for (const int cell : row) {
 			if (cell == 1) {
 				list.push_back(3);
 			} else if (cell > 0 && cell <= radius) {
@@ -2102,16 +2105,16 @@ void MagicField::onStepInField(const std::shared_ptr<Creature> &creature) {
 	const ItemType &it = items[getID()];
 	if (it.conditionDamage) {
 		const auto &conditionCopy = it.conditionDamage->clone();
-		auto ownerId = getOwnerId();
+		const auto ownerId = getOwnerId();
 		if (ownerId) {
 			bool harmfulField = true;
-			auto itemTile = getTile();
+			const auto &itemTile = getTile();
 			if (g_game().getWorldType() == WORLD_TYPE_NO_PVP || (itemTile && itemTile->hasFlag(TILESTATE_NOPVPZONE))) {
-				auto ownerPlayer = g_game().getPlayerByGUID(ownerId);
+				const auto &ownerPlayer = g_game().getPlayerByGUID(ownerId);
 				if (ownerPlayer) {
 					harmfulField = false;
 				}
-				auto ownerCreature = g_game().getCreatureByID(ownerId);
+				const auto &ownerCreature = g_game().getCreatureByID(ownerId);
 				if (ownerCreature) {
 					if (ownerCreature->getPlayer() || (ownerCreature->isSummon() && ownerCreature->getMaster()->getPlayer())) {
 						harmfulField = false;
@@ -2155,7 +2158,7 @@ void Combat::applyExtensions(const std::shared_ptr<Creature> &caster, const std:
 		chance = player->getSkillLevel(SKILL_CRITICAL_HIT_CHANCE);
 		bonus = player->getSkillLevel(SKILL_CRITICAL_HIT_DAMAGE);
 		if (target && target->getMonster()) {
-			uint16_t playerCharmRaceid = player->parseRacebyCharm(CHARM_LOW, false, 0);
+			const uint16_t playerCharmRaceid = player->parseRacebyCharm(CHARM_LOW, false, 0);
 			if (playerCharmRaceid != 0) {
 				const auto &mType = g_monsters().getMonsterType(target->getName());
 				if (mType && playerCharmRaceid == mType->info.raceid) {
@@ -2172,8 +2175,8 @@ void Combat::applyExtensions(const std::shared_ptr<Creature> &caster, const std:
 	}
 
 	bonus += damage.criticalDamage;
-	double multiplier = 1.0 + static_cast<double>(bonus) / 10000;
-	chance += (uint16_t)damage.criticalChance;
+	const double multiplier = 1.0 + static_cast<double>(bonus) / 10000;
+	chance += static_cast<uint16_t>(damage.criticalChance);
 
 	if (chance != 0 && uniform_random(1, 10000) <= chance) {
 		damage.critical = true;
@@ -2185,8 +2188,8 @@ void Combat::applyExtensions(const std::shared_ptr<Creature> &caster, const std:
 		// Fatal hit (onslaught)
 		if (const auto &playerWeapon = player->getInventoryItem(CONST_SLOT_LEFT);
 		    playerWeapon != nullptr && playerWeapon->getTier() > 0) {
-			double_t fatalChance = playerWeapon->getFatalChance();
-			double_t randomChance = uniform_random(0, 10000) / 100;
+			const double_t fatalChance = playerWeapon->getFatalChance();
+			const double_t randomChance = uniform_random(0, 10000) / 100;
 			if (fatalChance > 0 && randomChance < fatalChance) {
 				damage.fatal = true;
 				damage.primary.value += static_cast<int32_t>(std::round(damage.primary.value * 0.6));

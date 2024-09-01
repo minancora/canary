@@ -378,7 +378,7 @@ bool ConfigManager::reload() {
 	return result;
 }
 
-void ConfigManager::missingConfigWarning(const char* identifier) {
+void ConfigManager::missingConfigWarning(const char* identifier) const {
 	g_logger().warn("[{}]: Missing configuration for identifier: {}", __FUNCTION__, identifier);
 }
 
