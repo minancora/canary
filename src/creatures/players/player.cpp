@@ -2982,7 +2982,7 @@ void Player::despawn() {
 	size_t i = 0;
 	for (const auto &spectator : spectators) {
 		if (const auto &player = spectator->getPlayer()) {
-			oldStackPosVector.push_back(player->canSeeCreature(static_self_cast<Player>()) ? tile->getStackposOfCreature(player, getPlayer()) : -1);
+			oldStackPosVector.emplace_back(player->canSeeCreature(static_self_cast<Player>()) ? tile->getStackposOfCreature(player, getPlayer()) : -1);
 		}
 		if (const auto &player = spectator->getPlayer()) {
 			player->sendRemoveTileThing(tile->getPosition(), oldStackPosVector[i++]);
@@ -3081,7 +3081,7 @@ void Player::autoCloseContainers(const std::shared_ptr<Container> &container) {
 		auto tmpContainer = snd.container;
 		while (tmpContainer) {
 			if (tmpContainer->isRemoved() || tmpContainer == container) {
-				closeList.push_back(fst);
+				closeList.emplace_back(fst);
 				break;
 			}
 
@@ -4060,7 +4060,7 @@ std::vector<std::shared_ptr<Item>> Player::getEquippedAugmentItemsByType(Augment
 	for (const auto &item : equippedAugmentItems) {
 		for (const auto &augment : item->getAugments()) {
 			if (augment->type == augmentType) {
-				equippedAugmentItemsByType.push_back(item);
+				equippedAugmentItemsByType.emplace_back(item);
 			}
 		}
 	}
@@ -4197,7 +4197,7 @@ void Player::postAddNotification(const std::shared_ptr<Thing> &thing, const std:
 				}
 
 				if (!Position::areInRange<1, 1, 0>(container->getPosition(), getPosition())) {
-					containers.push_back(container);
+					containers.emplace_back(container);
 				}
 			}
 
@@ -5793,12 +5793,12 @@ uint8_t Player::getRandomMountId() const {
 	const auto mounts = g_game().mounts.getMounts();
 	for (const auto &mount : mounts) {
 		if (hasMount(mount)) {
-			playerMounts.push_back(mount->id);
+			playerMounts.emplace_back(mount->id);
 		}
 	}
 
-	auto playerMountsSize = static_cast<int32_t>(playerMounts.size() - 1);
-	auto randomIndex = uniform_random(0, std::max<int32_t>(0, playerMountsSize));
+	const auto playerMountsSize = static_cast<int32_t>(playerMounts.size() - 1);
+	const auto randomIndex = uniform_random(0, std::max<int32_t>(0, playerMountsSize));
 	return playerMounts.at(randomIndex);
 }
 
